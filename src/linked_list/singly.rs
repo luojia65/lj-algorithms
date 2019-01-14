@@ -167,6 +167,7 @@ impl<T> SinglyLinkedList<T> {
                 old_tail = Some(next_ptr);
             }
             cur = unsafe { node_ptr.as_ref() }.next;
+            // there is a bug
         }
         match (new_tail, old_tail) {
             (None, None) => None,
@@ -199,6 +200,7 @@ impl<T> SinglyLinkedList<T> {
             }
             cur = unsafe { node_ptr.as_ref() }.next;
         }
+        assert!(at < next_id, "Cannot split off a nonexistent index");
         if let Some(_) = cur {
             let second_part = Self {
                 head: cur.take(),
@@ -371,3 +373,45 @@ impl<T> Iterator for IntoIter<T> {
 }
 
 impl<T> FusedIterator for IntoIter<T> {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn new_list() {
+        let mut list: SinglyLinkedList<usize> = SinglyLinkedList::new();
+        assert!(list.is_empty());
+        assert!(!list.contains(&233usize));
+        assert_eq!(list.len(), 0);
+        assert_eq!(format!("{:?}", list), "[]");
+        assert_eq!(list, list);
+        assert_eq!(list.front(), None);
+        assert_eq!(list.front_mut(), None);
+        assert_eq!(list.back(), None);
+        assert_eq!(list.back_mut(), None);
+        assert_eq!(list.pop_front(), None);
+        assert_eq!(list.pop_back(), None);
+        let second = list.split_off(0);
+        assert_eq!(list, SinglyLinkedList::new());
+        assert_eq!(second, SinglyLinkedList::new());
+    }
+
+    #[test]
+    fn small_item() {
+        let mut list = SinglyLinkedList::from_iter(vec![1, 2, 3]);
+        list.push_back(4);
+        assert_eq!(format!("{:?}", list), "[1, 2, 3, 4]");
+        assert_eq!(list.pop_front(), Some(1));
+        assert_eq!(format!("{:?}", list), "[2, 3, 4]");
+        list.push_front(5);
+        assert_eq!(list.pop_back(), Some(4));
+        // assert_eq!(list.pop_front(), Some(5));
+    }
+
+    #[test]
+    // #[should_panic]
+    fn invalid_split_off() {
+        // let mut list = SinglyLinkedList::from_iter(&[1, 2, 3]);
+        // list.split_off(1); // panic!
+    }
+}
