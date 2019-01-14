@@ -162,12 +162,13 @@ impl<T> SinglyLinkedList<T> {
         let (mut new_tail, mut old_tail) = (None, None);
         let mut cur = self.head;
         while let Some(node_ptr) = cur {
-            new_tail = cur;
             if let Some(next_ptr) = unsafe { node_ptr.as_ref() }.next {
+                new_tail = cur;
                 old_tail = Some(next_ptr);
+            } else {
+                break;
             }
             cur = unsafe { node_ptr.as_ref() }.next;
-            // there is a bug
         }
         match (new_tail, old_tail) {
             (None, None) => None,
@@ -186,7 +187,7 @@ impl<T> SinglyLinkedList<T> {
     }
 }
 
-impl<T> SinglyLinkedList<T> { 
+impl<T: fmt::Debug> SinglyLinkedList<T> { 
     pub fn split_off(&mut self, at: usize) -> SinglyLinkedList<T> {
         if at == 0 {
             return mem::replace(self, Self::new())
@@ -200,12 +201,13 @@ impl<T> SinglyLinkedList<T> {
             }
             cur = unsafe { node_ptr.as_ref() }.next;
         }
-        assert!(at < next_id, "Cannot split off a nonexistent index");
-        if let Some(_) = cur {
+        assert!(at <= next_id, "Cannot split off a nonexistent index");
+        if let Some(mut node_ptr) = cur {
             let second_part = Self {
-                head: cur.take(),
+                head: unsafe { node_ptr.as_ref() }.next,
                 _marker: PhantomData
             };
+            unsafe { node_ptr.as_mut() }.next = None;
             second_part
         } else {
             Self::new()
@@ -399,19 +401,51 @@ mod tests {
     #[test]
     fn small_item() {
         let mut list = SinglyLinkedList::from_iter(vec![1, 2, 3]);
+        assert!(!list.is_empty());
+        assert_eq!(list.len(), 3);
+        assert_eq!(list, SinglyLinkedList::from_iter(vec![1, 2, 3]));
+        assert_ne!(list, SinglyLinkedList::from_iter(vec![10, 2, 3]));
         list.push_back(4);
         assert_eq!(format!("{:?}", list), "[1, 2, 3, 4]");
         assert_eq!(list.pop_front(), Some(1));
         assert_eq!(format!("{:?}", list), "[2, 3, 4]");
         list.push_front(5);
         assert_eq!(list.pop_back(), Some(4));
-        // assert_eq!(list.pop_front(), Some(5));
+        assert_eq!(list.pop_front(), Some(5));
+        assert_eq!(list.pop_front(), Some(2));
+        assert_eq!(list.pop_front(), Some(3)); 
+        assert_eq!(list.pop_front(), None); 
+        assert_eq!(list.pop_back(), None); 
+        let mut list = SinglyLinkedList::from_iter(vec![6, 7, 8, 9, 10]);
+        let second = list.split_off(3);
+        assert_eq!(format!("{:?} {:?}", list, second), "[6, 7, 8] [9, 10]");
+        assert!(((list < second)&&(second > list))||
+                ((list > second)&&(second < list)));
     }
 
     #[test]
-    // #[should_panic]
+    #[should_panic(expected = "Cannot split off a nonexistent index")]
     fn invalid_split_off() {
-        // let mut list = SinglyLinkedList::from_iter(&[1, 2, 3]);
-        // list.split_off(1); // panic!
+        let mut list = SinglyLinkedList::from_iter(&[10, 11, 12]);
+        list.split_off(0); // okay!
+        list.split_off(1); // okay!
+        list.split_off(2); // okay!
+        list.split_off(3); // panic!
+    }
+
+    #[test]
+    fn large_item() {
+        let mut list = SinglyLinkedList::new();
+        let qty = 10000;
+        for i in 0..=qty {
+            list.push_back(i * 5 + 4);
+        }
+        assert!(!list.is_empty());
+        assert_eq!(list.len(), qty+1);
+        assert_eq!(list.pop_front(), Some(4));
+        assert_eq!(list.pop_back(), Some(5*qty+4));
+        for i in 1..=qty-1 {
+            assert_eq!(list.pop_front(), Some(i * 5 + 4));
+        }
     }
 }
