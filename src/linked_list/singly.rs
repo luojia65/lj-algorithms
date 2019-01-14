@@ -423,14 +423,19 @@ mod tests {
                 ((list > second)&&(second < list)));
     }
 
-    #[test]
+    #[test] 
     #[should_panic(expected = "Cannot split off a nonexistent index")]
     fn invalid_split_off() {
         let mut list = SinglyLinkedList::from_iter(&[10, 11, 12]);
-        list.split_off(0); // okay!
-        list.split_off(1); // okay!
-        list.split_off(2); // okay!
-        list.split_off(3); // panic!
+        assert_eq!(list.split_off(0).len(), 3); // okay! []  [10, 11, 12]
+        let mut list = SinglyLinkedList::from_iter(&[10, 11, 12]);
+        assert_eq!(list.split_off(1).len(), 2); // okay! [10]    [11, 12]
+        let mut list = SinglyLinkedList::from_iter(&[10, 11, 12]);
+        assert_eq!(list.split_off(2).len(), 1); // okay! [10, 11]    [12]
+        let mut list = SinglyLinkedList::from_iter(&[10, 11, 12]);
+        assert_eq!(list.split_off(3).len(), 0); // okay! [10, 11, 12]  []
+        let mut list = SinglyLinkedList::from_iter(&[10, 11, 12]);
+        list.split_off(4); // panic!
     }
 
     #[test]
