@@ -41,16 +41,6 @@ impl<T> SinglyLinkedList<T> {
         }
     }
 
-    pub fn len(&self) -> usize {
-        let mut cur = self.head;
-        let mut ans = 0;
-        while let Some(node_ptr) = cur {
-            ans += 1;
-            cur = unsafe { node_ptr.as_ref() }.next;
-        }
-        ans
-    }
-
     pub fn is_empty(&self) -> bool {
         self.head.is_none()
     }
@@ -125,6 +115,16 @@ impl<T> SinglyLinkedList<T> {
         }
         ans
     }
+
+    pub fn len(&self) -> usize {
+        let mut cur = self.head;
+        let mut ans = 0;
+        while let Some(node_ptr) = cur {
+            ans += 1;
+            cur = unsafe { node_ptr.as_ref() }.next;
+        }
+        ans
+    }
     
     pub fn append(&mut self, other: &mut Self) {
         if let Some(mut tail_ptr) = self.tail() {
@@ -179,9 +179,7 @@ impl<T> SinglyLinkedList<T> {
             _ => unreachable!()
         }
     }
-}
 
-impl<T: fmt::Debug> SinglyLinkedList<T> { 
     pub fn split_off(&mut self, at: usize) -> SinglyLinkedList<T> {
         if at == 0 {
             return mem::replace(self, Self::new())

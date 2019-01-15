@@ -1,5 +1,6 @@
 use core::marker::PhantomData;
 use core::ptr::NonNull;
+use core::mem;
 
 pub struct CircularLinkedList<T> {
     tail: Option<NonNull<Node<T>>>,
@@ -33,17 +34,6 @@ impl<T> CircularLinkedList<T> {
         }
     }
 
-    pub fn len(&self) -> usize {
-        let mut cur = self.tail;
-        let mut ans = 0;
-        while let Some(node_ptr) = cur {
-            ans += 1;
-            cur = unsafe { node_ptr.as_ref() }.next;
-            if cur == self.tail { break }
-        } 
-        ans
-    } 
-
     pub fn is_empty(&self) -> bool {
         self.tail.is_none()
     }
@@ -66,6 +56,7 @@ impl<T> Drop for CircularLinkedList<T> {
     }
 }
 
+// O(1) operations
 impl<T> CircularLinkedList<T> {
     pub fn back(&self) -> Option<&T> {
         self.tail.as_ref().map(|node_ptr| &unsafe { node_ptr.as_ref() }.elem)
@@ -82,18 +73,17 @@ impl<T> CircularLinkedList<T> {
     pub fn front_mut(&mut self) -> Option<&mut T> {
         self.tail.as_mut().map(|node_ptr| &mut unsafe { &mut *node_ptr.as_mut().next.unwrap().as_ptr() }.elem)
     }
-
-    pub fn push_back(&mut self, elem: T) {
+    
+    pub fn push_front(&mut self, elem: T) {
         let node = Box::new(Node { elem, next: None });
-        let new_tail_ptr = NonNull::new(Box::into_raw(node));
-        assert!(new_tail_ptr.is_some());
-        unsafe { new_tail_ptr.unwrap().as_mut() }.next = 
+        let new_head_ptr = NonNull::new(Box::into_raw(node));
+        assert!(new_head_ptr.is_some());
+        unsafe { new_head_ptr.unwrap().as_mut() }.next = 
             if let Some(tail_ptr) = self.tail {
                 unsafe { tail_ptr.as_ref() }.next
             } else {
-                new_tail_ptr
+                new_head_ptr
             };
-        self.tail = new_tail_ptr;
     }
 
     pub fn pop_front(&mut self) -> Option<T> {
@@ -109,5 +99,45 @@ impl<T> CircularLinkedList<T> {
             let head = unsafe { Box::from_raw(head_ptr.unwrap().as_ptr()) };
             head.elem
         })
+    }
+
+    pub fn push_back(&mut self, elem: T) {
+        self.push_front(elem);
+        assert!(self.tail.is_some());
+        self.tail = unsafe { self.tail.unwrap().as_ref() }.next;
+    }
+
+    pub fn append(&mut self, other: &mut Self) {
+        match (self.tail, other.tail) {
+            (None, _) => mem::swap(self, other),
+            (Some(_tail_ptr), None) => {}, // append an empty list, nothing to do
+            (Some(mut tail_ptr), Some(mut other_tail_ptr)) => {
+                mem::swap(&mut unsafe { tail_ptr.as_mut() }.next, &mut unsafe { other_tail_ptr.as_mut() }.next);
+            }
+        }
+    }
+}
+
+// O(n) operations
+impl<T> CircularLinkedList<T> {
+    
+    pub fn len(&self) -> usize {
+        let mut cur = self.tail;
+        let mut ans = 0;
+        while let Some(node_ptr) = cur {
+            ans += 1;
+            cur = unsafe { node_ptr.as_ref() }.next;
+            if cur == self.tail { break }
+        } 
+        ans
+    } 
+
+    pub fn pop_back(&mut self) -> Option<T> {
+        // let mut cur = self.tail;
+        // while let Some(node_ptr) = cur {
+        //     cur = unsafe { node_ptr.as_ref() }.next;
+        //     if cur == self.tail { break }
+        // } 
+        unimplemented!()
     }
 }
