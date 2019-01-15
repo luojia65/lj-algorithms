@@ -13,7 +13,7 @@ pub struct SinglyLinkedList<T> {
 }
 
 struct Node<T> {
-    inner: T,
+    elem: T,
     next: Option<NonNull<Node<T>>>
 }
 
@@ -25,7 +25,7 @@ pub struct Iter<'a, T: 'a> {
 
 pub struct IterMut<'a, T: 'a> {
     cur: Option<NonNull<Node<T>>>,
-    _marker: PhantomData<&'a Node<T>>, 
+    _marker: PhantomData<&'a mut Node<T>>, 
 }
 
 #[derive(Clone)]
@@ -74,18 +74,7 @@ impl<T> SinglyLinkedList<T> {
     {
         self.iter().any(|elem| elem == value)
     }
-}
-
-impl<T> SinglyLinkedList<T> {
-    fn destroy(&mut self) {
-        let mut cur = self.head;
-        while let Some(node_ptr) = cur {
-            let node = unsafe { Box::from_raw(node_ptr.as_ptr()) };
-            cur = node.next;
-            // drop(node) is called
-        }
-    }
-
+    
     pub fn clear(&mut self) {
         *self = Self::new()
         // drop(self) is called
@@ -94,21 +83,26 @@ impl<T> SinglyLinkedList<T> {
 
 impl<T> Drop for SinglyLinkedList<T> {
     fn drop(&mut self) {
-        self.destroy()
+        let mut cur = self.head;
+        while let Some(node_ptr) = cur {
+            let node = unsafe { Box::from_raw(node_ptr.as_ptr()) };
+            cur = node.next;
+            // drop(node) is called
+        }
     }
 }
 
 impl<T> SinglyLinkedList<T> {
     pub fn front(&self) -> Option<&T> {
-        self.head.as_ref().map(|node_ptr| &unsafe { node_ptr.as_ref() }.inner)
+        self.head.as_ref().map(|node_ptr| &unsafe { node_ptr.as_ref() }.elem)
     }
 
     pub fn front_mut(&mut self) -> Option<&mut T> {
-        self.head.as_mut().map(|node_ptr| &mut unsafe { node_ptr.as_mut() }.inner)
+        self.head.as_mut().map(|node_ptr| &mut unsafe { node_ptr.as_mut() }.elem)
     }
 
-    pub fn push_front(&mut self, inner: T) {
-        let node = Box::new(Node { inner, next: self.head });
+    pub fn push_front(&mut self, elem: T) {
+        let node = Box::new(Node { elem, next: self.head });
         self.head = NonNull::new(Box::into_raw(node));
     }
 
@@ -116,7 +110,7 @@ impl<T> SinglyLinkedList<T> {
         self.head.map(|head_ptr| {
             let node = unsafe { Box::from_raw(head_ptr.as_ptr()) };
             self.head = node.next;
-            node.inner
+            node.elem
         })
     }
 }
@@ -141,15 +135,15 @@ impl<T> SinglyLinkedList<T> {
     }
 
     pub fn back(&self) -> Option<&T> {
-        self.tail().as_ref().map(|node_ptr| &unsafe { &*node_ptr.as_ptr() }.inner)
+        self.tail().as_ref().map(|node_ptr| &unsafe { &*node_ptr.as_ptr() }.elem)
     }
 
     pub fn back_mut(&mut self) -> Option<&mut T> {
-        self.tail().as_mut().map(|node_ptr| &mut unsafe { &mut *node_ptr.as_ptr() }.inner)
+        self.tail().as_mut().map(|node_ptr| &mut unsafe { &mut *node_ptr.as_ptr() }.elem)
     }
 
-    pub fn push_back(&mut self, inner: T) {
-        let node = Box::new(Node { inner, next: None });
+    pub fn push_back(&mut self, elem: T) {
+        let node = Box::new(Node { elem, next: None });
         let new_tail_ptr = NonNull::new(Box::into_raw(node));
         if let Some(mut tail_ptr) = self.tail() {
             unsafe { tail_ptr.as_mut() }.next = new_tail_ptr;
@@ -175,12 +169,12 @@ impl<T> SinglyLinkedList<T> {
             (Some(node_ptr), None) => {
                 let node = unsafe { Box::from_raw(node_ptr.as_ptr()) };
                 self.head = None;
-                Some(node.inner)
+                Some(node.elem)
             },
             (Some(mut new_tail_ptr), Some(old_tail_ptr)) => {
                 unsafe { new_tail_ptr.as_mut() }.next = None;
                 let node = unsafe { Box::from_raw(old_tail_ptr.as_ptr()) };
-                Some(node.inner)
+                Some(node.elem)
             }
             _ => unreachable!()
         }
@@ -325,7 +319,7 @@ impl<'a, T> Iterator for Iter<'a, T> {
         self.cur.map(|cur_ptr| {
             let node = unsafe { &*cur_ptr.as_ptr() };
             self.cur = node.next;
-            &node.inner
+            &node.elem
         })
     }
 }
@@ -349,7 +343,7 @@ impl<'a, T> Iterator for IterMut<'a, T> {
         self.cur.map(|cur_ptr| {
             let node = unsafe { &mut *cur_ptr.as_ptr() };
             self.cur = node.next;
-            &mut node.inner
+            &mut node.elem
         })
     }
 }
@@ -449,6 +443,8 @@ mod tests {
         assert_eq!(list.len(), qty+1);
         assert_eq!(list.pop_front(), Some(4));
         assert_eq!(list.pop_back(), Some(5*qty+4));
+        assert!(list.contains(&2504));
+        assert!(!list.contains(&2503));
         for i in 1..=qty-1 {
             assert_eq!(list.pop_front(), Some(i * 5 + 4));
         }
