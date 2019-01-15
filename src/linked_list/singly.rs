@@ -275,6 +275,7 @@ impl<T: Ord> Ord for SinglyLinkedList<T> {
 impl<T> Extend<T> for SinglyLinkedList<T> {
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
         for item in iter {
+            // todo: O(n^2) is slow. cursor on linkedlist may help?
             self.push_back(item)
         }
     }
