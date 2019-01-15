@@ -133,11 +133,11 @@ impl<T> CircularLinkedList<T> {
     } 
 
     pub fn pop_back(&mut self) -> Option<T> {
-        // let mut cur = self.tail;
-        // while let Some(node_ptr) = cur {
-        //     cur = unsafe { node_ptr.as_ref() }.next;
-        //     if cur == self.tail { break }
-        // } 
+        let mut cur = self.tail;
+        while let Some(node_ptr) = cur {
+            cur = unsafe { node_ptr.as_ref() }.next;
+            if cur == self.tail { break }
+        } 
         unimplemented!()
     }
 }

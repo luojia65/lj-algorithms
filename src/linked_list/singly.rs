@@ -1,10 +1,9 @@
-use core::marker::PhantomData;
-use core::ptr::NonNull;
-use core::iter::FusedIterator;
-use core::fmt;
 use core::cmp::Ordering;
-use core::iter::FromIterator;
 use core::hash::{Hasher, Hash};
+use core::iter::{FromIterator, FusedIterator};
+use core::fmt;
+use core::ptr::NonNull;
+use core::marker::PhantomData;
 use core::mem;
 
 pub struct SinglyLinkedList<T> {
@@ -274,9 +273,16 @@ impl<T: Ord> Ord for SinglyLinkedList<T> {
 
 impl<T> Extend<T> for SinglyLinkedList<T> {
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
-        for item in iter {
-            // todo: O(n^2) is slow. cursor on linkedlist may help?
-            self.push_back(item)
+        let mut cur = self.tail();
+        for elem in iter {
+            let node = Box::new(Node { elem, next: None });
+            let new_tail_ptr = NonNull::new(Box::into_raw(node));
+            if let Some(mut tail_ptr) = cur {
+                unsafe { tail_ptr.as_mut() }.next = new_tail_ptr;
+            } else {
+                self.head = new_tail_ptr;
+            }
+            cur = new_tail_ptr;
         }
     }
 }
@@ -433,11 +439,13 @@ mod tests {
 
     #[test]
     fn large_item() {
-        let mut list = SinglyLinkedList::new();
-        let qty = 10000;
+        let mut vec = Vec::new();
+        let qty = 100000;
         for i in 0..=qty {
-            list.push_back(i * 5 + 4);
+            vec.push(i * 5 + 4);
         }
+        let mut list = SinglyLinkedList::new();
+        list.extend(vec);
         assert!(!list.is_empty());
         assert_eq!(list.len(), qty+1);
         assert_eq!(list.pop_front(), Some(4));
